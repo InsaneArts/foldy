@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		021FBE2A307C4EB8FEB3C411 /* FoldSoftwarePaneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9050847BE65B5B69B2C91D /* FoldSoftwarePaneTests.swift */; };
 		0CFCC91C8962A4D4FF36A3A1 /* AtlasScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 918D1DF1377FD888D50F60CA /* AtlasScene.swift */; };
 		0E8C5643F8E07762847CAD2B /* FitnessScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23055492FB34237609E1AAB1 /* FitnessScene.swift */; };
 		159088529B257E89DB5EA3ED /* BoardingScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5B65B5F7D4814ECB052CE7 /* BoardingScene.swift */; };
@@ -18,7 +19,9 @@
 		31A50D77AD1D9C628992926D /* WalletScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7559CAC1CD7417B8C5188B3E /* WalletScene.swift */; };
 		3B680E04A92D874B1BA94873 /* FoldShaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234BBA7DCBC26FCE8956AF81 /* FoldShaderTests.swift */; };
 		3D17327FD67FA6EAE8E0C542 /* DuoScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 167627D9AB608C085A1D07C1 /* DuoScene.swift */; };
+		4445B033EB5F070880F85F4E /* FoldSoftwarePoseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC7D1BBACCAF591132C313F3 /* FoldSoftwarePoseTests.swift */; };
 		4C84EE6BF8AD1A52807F5FDB /* MomentsScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5AD8DBBA4C89E19CAD08941 /* MomentsScene.swift */; };
+		5DACAD5B57B1E53413E22F32 /* FoldSwipeTrackerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AD88F8570D1A232466DB65 /* FoldSwipeTrackerTests.swift */; };
 		637F3F93AD59033FA5798558 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6867877686E7A5AA0F7262C6 /* Assets.xcassets */; };
 		8017E1B1E892BB4347AA2159 /* ExperienceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF46D7E7A23061433F9CD00C /* ExperienceView.swift */; };
 		9D07E7930FD22444354F4D70 /* ShowcaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73BFE75E506D07C9E5B69CC3 /* ShowcaseView.swift */; };
@@ -52,6 +55,7 @@
 
 /* Begin PBXFileReference section */
 		04BE105EF27104FB4266E349 /* FoldStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldStateTests.swift; sourceTree = "<group>"; };
+		06AD88F8570D1A232466DB65 /* FoldSwipeTrackerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldSwipeTrackerTests.swift; sourceTree = "<group>"; };
 		167627D9AB608C085A1D07C1 /* DuoScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuoScene.swift; sourceTree = "<group>"; };
 		23055492FB34237609E1AAB1 /* FitnessScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessScene.swift; sourceTree = "<group>"; };
 		234BBA7DCBC26FCE8956AF81 /* FoldShaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldShaderTests.swift; sourceTree = "<group>"; };
@@ -59,6 +63,7 @@
 		34F4B09A730402B0546EC978 /* FoldyDemoTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FoldyDemoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3898CBFF0D18A6D0C4F57D32 /* Foldy */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Foldy; path = ../..; sourceTree = SOURCE_ROOT; };
 		5BF88C49290AA900B1739966 /* FoldyDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldyDemoApp.swift; sourceTree = "<group>"; };
+		5C9050847BE65B5B69B2C91D /* FoldSoftwarePaneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldSoftwarePaneTests.swift; sourceTree = "<group>"; };
 		5F5B65B5F7D4814ECB052CE7 /* BoardingScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardingScene.swift; sourceTree = "<group>"; };
 		64184EDA5C0E7BAC16B624EA /* GalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryView.swift; sourceTree = "<group>"; };
 		6867877686E7A5AA0F7262C6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -71,6 +76,7 @@
 		AF4568E75AB77C3608814DD7 /* WeatherScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherScene.swift; sourceTree = "<group>"; };
 		B1D1E2565381CA4CF08EA6B5 /* ExampleScenes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleScenes.swift; sourceTree = "<group>"; };
 		C5F3D9629024AE05A08D8B6B /* TravelScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelScene.swift; sourceTree = "<group>"; };
+		DC7D1BBACCAF591132C313F3 /* FoldSoftwarePoseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldSoftwarePoseTests.swift; sourceTree = "<group>"; };
 		E5AD8DBBA4C89E19CAD08941 /* MomentsScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MomentsScene.swift; sourceTree = "<group>"; };
 		EF54E25FAE2E0A612351F80F /* FoldMotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldMotionTests.swift; sourceTree = "<group>"; };
 		F1BF02ED681CEAB2B9352F06 /* FoldContainerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldContainerTests.swift; sourceTree = "<group>"; };
@@ -147,6 +153,7 @@
 				FB411768C226BDBD281713BB /* FoldEnvironmentTests.swift */,
 				EF54E25FAE2E0A612351F80F /* FoldMotionTests.swift */,
 				234BBA7DCBC26FCE8956AF81 /* FoldShaderTests.swift */,
+				5C9050847BE65B5B69B2C91D /* FoldSoftwarePaneTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -174,7 +181,9 @@
 		F2662898ECEF752622E1FB41 /* FoldyTests */ = {
 			isa = PBXGroup;
 			children = (
+				DC7D1BBACCAF591132C313F3 /* FoldSoftwarePoseTests.swift */,
 				04BE105EF27104FB4266E349 /* FoldStateTests.swift */,
+				06AD88F8570D1A232466DB65 /* FoldSwipeTrackerTests.swift */,
 			);
 			name = FoldyTests;
 			path = ../../Tests/FoldyTests;
@@ -331,7 +340,10 @@
 				CCAC753BF36A7C399183C1B8 /* FoldEnvironmentTests.swift in Sources */,
 				AE48D3038E972EEA107680D9 /* FoldMotionTests.swift in Sources */,
 				3B680E04A92D874B1BA94873 /* FoldShaderTests.swift in Sources */,
+				021FBE2A307C4EB8FEB3C411 /* FoldSoftwarePaneTests.swift in Sources */,
+				4445B033EB5F070880F85F4E /* FoldSoftwarePoseTests.swift in Sources */,
 				2097D7BC3AD5446102D87477 /* FoldStateTests.swift in Sources */,
+				5DACAD5B57B1E53413E22F32 /* FoldSwipeTrackerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
