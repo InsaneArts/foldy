@@ -174,7 +174,17 @@ private struct FoldSoftwareTransition<Source: View, Destination: View>: View {
     }
 }
 #else
-private struct FoldHost<Source: View, Destination: View>: UIViewControllerRepresentable {
+#if canImport(UIKit)
+private typealias FoldRepresentable = UIViewControllerRepresentable
+private typealias FoldViewController = UIViewController
+private typealias FoldHostingController<Content: View> = UIHostingController<Content>
+#else
+private typealias FoldRepresentable = NSViewControllerRepresentable
+private typealias FoldViewController = NSViewController
+private typealias FoldHostingController<Content: View> = NSHostingController<Content>
+#endif
+
+private struct FoldHost<Source: View, Destination: View>: FoldRepresentable {
     let source: Source
     let destination: Destination
     let value: Double
@@ -185,12 +195,22 @@ private struct FoldHost<Source: View, Destination: View>: UIViewControllerRepres
     var verticalAngle: Double = 0
     var eventHandler: (@MainActor (FoldEvent) -> Void)?
 
-    func makeUIViewController(context: Context) -> FoldHostController<Source, Destination> {
+    #if canImport(UIKit)
+    func makeUIViewController(context: Context) -> FoldHostController<Source, Destination> { make(context) }
+    func updateUIViewController(_ controller: FoldHostController<Source, Destination>, context: Context) { sync(controller, context) }
+    static func dismantleUIViewController(_ controller: FoldHostController<Source, Destination>, coordinator: ()) { dismantle(controller) }
+    #else
+    func makeNSViewController(context: Context) -> FoldHostController<Source, Destination> { make(context) }
+    func updateNSViewController(_ controller: FoldHostController<Source, Destination>, context: Context) { sync(controller, context) }
+    static func dismantleNSViewController(_ controller: FoldHostController<Source, Destination>, coordinator: ()) { dismantle(controller) }
+    #endif
+
+    private func make(_ context: Context) -> FoldHostController<Source, Destination> {
         FoldHostController(source: source, destination: destination, environment: context.environment,
                            isTransition: isTransition)
     }
 
-    func updateUIViewController(_ controller: FoldHostController<Source, Destination>, context: Context) {
+    private func sync(_ controller: FoldHostController<Source, Destination>, _ context: Context) {
         // Preserve the actual hosting controllers and their @State throughout a session.
         let container = controller.container
         let atRest = isTransition ? value <= 0 || value >= 1 : FoldTilt(horizontal: value, vertical: verticalAngle).isAtRest
@@ -212,7 +232,7 @@ private struct FoldHost<Source: View, Destination: View>: UIViewControllerRepres
         }
     }
 
-    static func dismantleUIViewController(_ controller: FoldHostController<Source, Destination>, coordinator: ()) {
+    private static func dismantle(_ controller: FoldHostController<Source, Destination>) {
         controller.container.onEvent = nil
         controller.container.cancel()
     }
@@ -225,18 +245,18 @@ private struct FoldHostedContent<Content: View>: View {
     var body: some View { content.environment(\.self, environment) }
 }
 
-private final class FoldHostController<Source: View, Destination: View>: UIViewController {
-    let source: UIHostingController<FoldHostedContent<Source>>
-    let destination: UIHostingController<FoldHostedContent<Destination>>?
+private final class FoldHostController<Source: View, Destination: View>: FoldViewController {
+    let source: FoldHostingController<FoldHostedContent<Source>>
+    let destination: FoldHostingController<FoldHostedContent<Destination>>?
     let container: FoldContainerView
 
     init(source: Source, destination: Destination, environment: EnvironmentValues, isTransition: Bool) {
-        let first = UIHostingController(rootView: FoldHostedContent(content: source, environment: environment))
-        first.view.backgroundColor = .clear
+        let first = FoldHostingController(rootView: FoldHostedContent(content: source, environment: environment))
+        Self.configure(first)
         self.source = first
         if isTransition {
-            let second = UIHostingController(rootView: FoldHostedContent(content: destination, environment: environment))
-            second.view.backgroundColor = .clear
+            let second = FoldHostingController(rootView: FoldHostedContent(content: destination, environment: environment))
+            Self.configure(second)
             self.destination = second
             container = FoldContainerView(source: first.view, destination: second.view)
         } else {
@@ -246,17 +266,26 @@ private final class FoldHostController<Source: View, Destination: View>: UIViewC
         super.init(nibName: nil, bundle: nil)
     }
 
+    /// Hosting views are transparent and sized by the container, not by their content.
+    private static func configure<Content: View>(_ hosting: FoldHostingController<Content>) {
+        #if canImport(UIKit)
+        hosting.view.backgroundColor = .clear
+        #else
+        hosting.sizingOptions = []
+        #endif
+    }
+
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("Use init(source:destination:isTransition:).") }
 
     override func loadView() {
         view = container
         addChild(source)
+        if let destination { addChild(destination) }
+        #if canImport(UIKit)
         source.didMove(toParent: self)
-        if let destination {
-            addChild(destination)
-            destination.didMove(toParent: self)
-        }
+        destination?.didMove(toParent: self)
+        #endif
     }
 }
 #endif

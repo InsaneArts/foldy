@@ -1,7 +1,4 @@
 import SwiftUI
-#if !os(watchOS)
-import UIKit
-#endif
 
 /// Pages between items with a fold. Moving to a later item folds the current page away around the
 /// right edge and unfolds the next one behind it, like turning a page; moving back hinges on the left.
@@ -134,16 +131,24 @@ public struct FoldPager<Item: Identifiable, Content: View>: View {
 
 #if !os(watchOS)
 /// A pan on the pager's fold container.
-private struct FoldPagerSwipe: UIViewRepresentable {
+private struct FoldPagerSwipe: FoldViewRepresentable {
     let onSwipe: (FoldBump) -> Void
 
-    func makeUIView(context: Context) -> SwipeView {
+    #if canImport(UIKit)
+    func makeUIView(context: Context) -> SwipeView { make() }
+    func updateUIView(_ view: SwipeView, context: Context) { view.onSwipe = onSwipe }
+    #else
+    func makeNSView(context: Context) -> SwipeView { make() }
+    func updateNSView(_ view: SwipeView, context: Context) { view.onSwipe = onSwipe }
+    #endif
+
+    private func make() -> SwipeView {
         let view = SwipeView(attachesToContainer: true)
+        #if canImport(UIKit)
         view.backgroundColor = .clear
+        #endif
         return view
     }
-
-    func updateUIView(_ view: SwipeView, context: Context) { view.onSwipe = onSwipe }
 
     @MainActor
     final class SwipeView: FoldPanHost {

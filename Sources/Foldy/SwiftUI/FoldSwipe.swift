@@ -1,6 +1,8 @@
 import SwiftUI
-#if !os(watchOS)
+#if canImport(UIKit) && !os(watchOS)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
 #endif
 
 /// Where a fold swipe listens for touches.
@@ -120,18 +122,40 @@ private struct FoldSwipeGesture: ViewModifier {
     }
 }
 #else
-private struct FoldSwipeRepresentable: UIViewRepresentable {
+#if canImport(UIKit)
+typealias FoldViewRepresentable = UIViewRepresentable
+typealias FoldPanRecognizer = UIPanGestureRecognizer
+typealias FoldRecognizer = UIGestureRecognizer
+typealias FoldRecognizerDelegate = UIGestureRecognizerDelegate
+#else
+typealias FoldViewRepresentable = NSViewRepresentable
+typealias FoldPanRecognizer = NSPanGestureRecognizer
+typealias FoldRecognizer = NSGestureRecognizer
+typealias FoldRecognizerDelegate = NSGestureRecognizerDelegate
+#endif
+
+private struct FoldSwipeRepresentable: FoldViewRepresentable {
     let progress: Binding<Double>
     let settle: Animation
     let attachesToContainer: Bool
 
-    func makeUIView(context: Context) -> FoldSwipeView {
+    #if canImport(UIKit)
+    func makeUIView(context: Context) -> FoldSwipeView { make() }
+    func updateUIView(_ view: FoldSwipeView, context: Context) { sync(view) }
+    #else
+    func makeNSView(context: Context) -> FoldSwipeView { make() }
+    func updateNSView(_ view: FoldSwipeView, context: Context) { sync(view) }
+    #endif
+
+    private func make() -> FoldSwipeView {
         let view = FoldSwipeView(attachesToContainer: attachesToContainer)
+        #if canImport(UIKit)
         view.backgroundColor = .clear
+        #endif
         return view
     }
 
-    func updateUIView(_ view: FoldSwipeView, context: Context) {
+    private func sync(_ view: FoldSwipeView) {
         view.progress = progress
         view.settle = settle
     }
@@ -156,13 +180,13 @@ final class FoldSwipeView: FoldPanHost {
     }
 }
 
-/// A UIKit view that owns one pan recognizer. With `attachesToContainer` it waits for the nearest
+/// A native view that owns one pan recognizer. With `attachesToContainer` it waits for the nearest
 /// `FoldContainerView` to appear in the hierarchy and attaches the pan there; otherwise the pan is
 /// on this view itself, which must then be on top of the content it serves.
 @MainActor
-class FoldPanHost: UIView, UIGestureRecognizerDelegate {
+class FoldPanHost: FoldPlatformView, FoldRecognizerDelegate {
     private let attachesToContainer: Bool
-    private weak var recognizer: UIPanGestureRecognizer?
+    private weak var recognizer: FoldPanRecognizer?
 
     init(attachesToContainer: Bool) {
         self.attachesToContainer = attachesToContainer
@@ -176,6 +200,7 @@ class FoldPanHost: UIView, UIGestureRecognizerDelegate {
     func panChanged(_ translation: CGPoint, in size: CGSize) {}
     func panEnded(_ translation: CGPoint, velocity: CGPoint, in size: CGSize) {}
 
+    #if canImport(UIKit)
     override func didMoveToWindow() {
         super.didMoveToWindow()
         attachIfNeeded()
@@ -186,15 +211,34 @@ class FoldPanHost: UIView, UIGestureRecognizerDelegate {
         super.layoutSubviews()
         attachIfNeeded()
     }
+    #else
+    override var isFlipped: Bool { true }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        attachIfNeeded()
+        // The container can arrive after this view; look again once the hierarchy has settled.
+        if recognizer == nil {
+            Task { @MainActor [weak self] in self?.attachIfNeeded() }
+        }
+    }
+
+    override func layout() {
+        super.layout()
+        attachIfNeeded()
+    }
+    #endif
 
     private func attachIfNeeded() {
         guard attachesToContainer, window != nil, recognizer == nil, let container = nearestContainer() else { return }
         attach(to: container)
     }
 
-    private func attach(to target: UIView) {
-        let pan = UIPanGestureRecognizer(target: self, action: #selector(handle(_:)))
+    private func attach(to target: FoldPlatformView) {
+        let pan = FoldPanRecognizer(target: self, action: #selector(handle(_:)))
+        #if canImport(UIKit)
         pan.cancelsTouchesInView = false
+        #endif
         pan.delegate = self
         target.addGestureRecognizer(pan)
         recognizer = pan
@@ -211,7 +255,7 @@ class FoldPanHost: UIView, UIGestureRecognizerDelegate {
         return nil
     }
 
-    private func firstContainer(in view: UIView) -> FoldContainerView? {
+    private func firstContainer(in view: FoldPlatformView) -> FoldContainerView? {
         for subview in view.subviews {
             if let container = subview as? FoldContainerView, !isDescendant(of: container) { return container }
             if let found = firstContainer(in: subview) { return found }
@@ -219,7 +263,7 @@ class FoldPanHost: UIView, UIGestureRecognizerDelegate {
         return nil
     }
 
-    @objc private func handle(_ pan: UIPanGestureRecognizer) {
+    @objc private func handle(_ pan: FoldPanRecognizer) {
         guard let view = pan.view else { return }
         let translation = pan.translation(in: view)
         switch pan.state {
@@ -229,7 +273,7 @@ class FoldPanHost: UIView, UIGestureRecognizerDelegate {
         }
     }
 
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
-                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    func gestureRecognizer(_ gestureRecognizer: FoldRecognizer,
+                           shouldRecognizeSimultaneouslyWith other: FoldRecognizer) -> Bool { true }
 }
 #endif
