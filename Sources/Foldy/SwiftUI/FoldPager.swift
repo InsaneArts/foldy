@@ -1,5 +1,7 @@
 import SwiftUI
+#if !os(watchOS)
 import UIKit
+#endif
 
 /// Pages between items with a fold. Moving to a later item folds the current page away around the
 /// right edge and unfolds the next one behind it, like turning a page; moving back hinges on the left.
@@ -44,7 +46,7 @@ public struct FoldPager<Item: Identifiable, Content: View>: View {
     }
 
     public var body: some View {
-        // One container lives for the pager's whole life, so swipes always have a UIKit target and
+        // One container lives for the pager's whole life, so swipes always have a target and
         // the current page keeps its state between moves.
         FoldTransition(progress: progress, style: moveStyle, reducesMotion: reducesMotion) {
             page(shown ?? current)
@@ -54,7 +56,15 @@ public struct FoldPager<Item: Identifiable, Content: View>: View {
         .onFoldEvent { event in
             if case .completed(.destination) = event { finish() }
         }
+        #if os(watchOS)
+        .simultaneousGesture(DragGesture(minimumDistance: 20).onEnded { value in
+            let translation = CGPoint(x: value.translation.width, y: value.translation.height)
+            let velocity = CGPoint(x: value.velocity.width, y: value.velocity.height)
+            if let bump = FoldSwipeTracker.page(translation, velocity: velocity) { step(bump) }
+        })
+        #else
         .background { FoldPagerSwipe { step($0) } }
+        #endif
         .onAppear {
             shown = current
             motion?.onBump = { bump in step(bump) }
@@ -122,7 +132,8 @@ public struct FoldPager<Item: Identifiable, Content: View>: View {
     }
 }
 
-/// A pan on the pager's fold container. A swipe left reports `.right`, the way paging works.
+#if !os(watchOS)
+/// A pan on the pager's fold container.
 private struct FoldPagerSwipe: UIViewRepresentable {
     let onSwipe: (FoldBump) -> Void
 
@@ -139,9 +150,8 @@ private struct FoldPagerSwipe: UIViewRepresentable {
         var onSwipe: ((FoldBump) -> Void)?
 
         override func panEnded(_ translation: CGPoint, velocity: CGPoint, in size: CGSize) {
-            let dx = translation.x + velocity.x * 0.1, dy = translation.y + velocity.y * 0.1
-            guard max(abs(dx), abs(dy)) > 40 else { return }
-            onSwipe?(abs(dx) >= abs(dy) ? (dx < 0 ? .right : .left) : (dy < 0 ? .down : .up))
+            if let bump = FoldSwipeTracker.page(translation, velocity: velocity) { onSwipe?(bump) }
         }
     }
 }
+#endif

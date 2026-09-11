@@ -1,5 +1,7 @@
 import SwiftUI
+#if !os(watchOS)
 import UIKit
+#endif
 
 /// Where a fold swipe listens for touches.
 public enum FoldSwipePlacement: Sendable {
@@ -16,9 +18,59 @@ public extension View {
     ///
     /// From an endpoint, a swipe in any direction folds toward the other endpoint; moving back along
     /// the same line reverses it, and release settles on the nearer endpoint with `settle`.
+    /// On watchOS both placements attach a drag gesture to the view itself.
     func foldSwipe(progress: Binding<Double>, placement: FoldSwipePlacement = .container,
                    settle: Animation = .easeOut(duration: 0.5)) -> some View {
         modifier(FoldSwipeModifier(progress: progress, placement: placement, settle: settle))
+    }
+}
+
+/// Turns one drag into fold progress. The first 14 points fix the swipe's axis; distance along that
+/// axis, as a fraction of the view's extent along it, moves progress toward the far endpoint.
+struct FoldSwipeTracker {
+    private var origin: Double?
+    private var axis: CGVector?
+
+    /// The progress for a drag in flight, or nil until the direction is known.
+    mutating func changed(_ translation: CGPoint, in size: CGSize, progress: Double) -> Double? {
+        let start = origin ?? progress
+        origin = start
+        guard let axis = axis ?? Self.axis(for: translation) else { return nil }
+        self.axis = axis
+        return min(max(start + Self.delta(translation, along: axis, from: start, in: size), 0), 1)
+    }
+
+    /// The endpoint to settle on, or nil for a touch that never became a swipe.
+    mutating func ended(_ translation: CGPoint, velocity: CGPoint, in size: CGSize, progress: Double) -> Double? {
+        let start = origin ?? progress
+        let projected = CGPoint(x: translation.x + velocity.x * 0.15, y: translation.y + velocity.y * 0.15)
+        let axis = axis ?? Self.axis(for: projected)
+        origin = nil
+        self.axis = nil
+        guard let axis else { return nil }
+        let target = start + Self.delta(projected, along: axis, from: start, in: size)
+        return target >= 0.5 ? 1 : 0
+    }
+
+    /// The page a finished swipe asks for. A swipe left reports `.right`, the way paging works.
+    static func page(_ translation: CGPoint, velocity: CGPoint) -> FoldBump? {
+        let dx = translation.x + velocity.x * 0.1, dy = translation.y + velocity.y * 0.1
+        guard max(abs(dx), abs(dy)) > 40 else { return nil }
+        return abs(dx) >= abs(dy) ? (dx < 0 ? .right : .left) : (dy < 0 ? .down : .up)
+    }
+
+    private static func axis(for translation: CGPoint) -> CGVector? {
+        let length = hypot(translation.x, translation.y)
+        guard length >= 14 else { return nil }
+        return CGVector(dx: translation.x / length, dy: translation.y / length)
+    }
+
+    /// Distance along the swipe axis, as a fraction of the target's extent along that axis.
+    private static func delta(_ translation: CGPoint, along axis: CGVector, from origin: Double, in size: CGSize) -> Double {
+        let along = Double(translation.x * axis.dx + translation.y * axis.dy)
+        let extent = Double(abs(axis.dx) * size.width + abs(axis.dy) * size.height)
+        let toward: Double = origin < 0.5 ? 1 : -1
+        return toward * along / max(extent, 1) * 1.25
     }
 }
 
@@ -28,15 +80,46 @@ private struct FoldSwipeModifier: ViewModifier {
     let settle: Animation
 
     func body(content: Content) -> some View {
+        #if os(watchOS)
+        content.modifier(FoldSwipeGesture(progress: progress, settle: settle))
+        #else
         switch placement {
         case .container:
             content.background { FoldSwipeRepresentable(progress: progress, settle: settle, attachesToContainer: true) }
         case .surface:
             content.overlay { FoldSwipeRepresentable(progress: progress, settle: settle, attachesToContainer: false) }
         }
+        #endif
     }
 }
 
+#if os(watchOS)
+/// A drag on the view itself. Simultaneous, so taps and scrolling inside still work.
+private struct FoldSwipeGesture: ViewModifier {
+    let progress: Binding<Double>
+    let settle: Animation
+    @State private var tracker = FoldSwipeTracker()
+    @State private var size = CGSize.zero
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
+            .simultaneousGesture(DragGesture(minimumDistance: 14, coordinateSpace: .local)
+                .onChanged { value in
+                    let translation = CGPoint(x: value.translation.width, y: value.translation.height)
+                    guard let next = tracker.changed(translation, in: size, progress: progress.wrappedValue) else { return }
+                    progress.wrappedValue = next
+                }
+                .onEnded { value in
+                    let translation = CGPoint(x: value.translation.width, y: value.translation.height)
+                    let velocity = CGPoint(x: value.velocity.width, y: value.velocity.height)
+                    guard let target = tracker.ended(translation, velocity: velocity, in: size,
+                                                     progress: progress.wrappedValue) else { return }
+                    withAnimation(settle) { progress.wrappedValue = target }
+                })
+    }
+}
+#else
 private struct FoldSwipeRepresentable: UIViewRepresentable {
     let progress: Binding<Double>
     let settle: Animation
@@ -59,42 +142,17 @@ private struct FoldSwipeRepresentable: UIViewRepresentable {
 final class FoldSwipeView: FoldPanHost {
     var progress: Binding<Double>?
     var settle: Animation = .easeOut(duration: 0.5)
-    private var origin: Double?
-    private var axis: CGVector?
+    private var tracker = FoldSwipeTracker()
 
     override func panChanged(_ translation: CGPoint, in size: CGSize) {
-        guard let progress else { return }
-        let start = origin ?? progress.wrappedValue
-        origin = start
-        guard let axis = axis ?? Self.axis(for: translation) else { return }
-        self.axis = axis
-        progress.wrappedValue = min(max(start + Self.delta(translation, along: axis, from: start, in: size), 0), 1)
+        guard let progress, let next = tracker.changed(translation, in: size, progress: progress.wrappedValue) else { return }
+        progress.wrappedValue = next
     }
 
     override func panEnded(_ translation: CGPoint, velocity: CGPoint, in size: CGSize) {
-        guard let progress else { return }
-        let start = origin ?? progress.wrappedValue
-        let projected = CGPoint(x: translation.x + velocity.x * 0.15, y: translation.y + velocity.y * 0.15)
-        let axis = axis ?? Self.axis(for: projected)
-        origin = nil
-        self.axis = nil
-        guard let axis else { return }
-        let target = start + Self.delta(projected, along: axis, from: start, in: size)
-        withAnimation(settle) { progress.wrappedValue = target >= 0.5 ? 1 : 0 }
-    }
-
-    private static func axis(for translation: CGPoint) -> CGVector? {
-        let length = hypot(translation.x, translation.y)
-        guard length >= 14 else { return nil }
-        return CGVector(dx: translation.x / length, dy: translation.y / length)
-    }
-
-    /// Distance along the swipe axis, as a fraction of the target's extent along that axis.
-    private static func delta(_ translation: CGPoint, along axis: CGVector, from origin: Double, in size: CGSize) -> Double {
-        let along = Double(translation.x * axis.dx + translation.y * axis.dy)
-        let extent = Double(abs(axis.dx) * size.width + abs(axis.dy) * size.height)
-        let toward: Double = origin < 0.5 ? 1 : -1
-        return toward * along / max(extent, 1) * 1.25
+        guard let progress,
+              let target = tracker.ended(translation, velocity: velocity, in: size, progress: progress.wrappedValue) else { return }
+        withAnimation(settle) { progress.wrappedValue = target }
     }
 }
 
@@ -174,3 +232,4 @@ class FoldPanHost: UIView, UIGestureRecognizerDelegate {
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
                            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
 }
+#endif
