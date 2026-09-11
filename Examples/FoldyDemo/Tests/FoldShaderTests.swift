@@ -94,8 +94,8 @@ final class FoldShaderTests: XCTestCase {
                         sourceAlpha: UInt8 = 255, verticalAngle: Double = 0,
                         style: FoldStyle = .frosted, gradientSource: Bool = false) throws -> [UInt8] {
         let device = try XCTUnwrap(MTLCreateSystemDefaultDevice())
-        // Bundle.module resolves the package resource through @testable import Foldy.
-        let library = try device.makeDefaultLibrary(bundle: .module)
+        // The shader bundle is internal to Foldy and visible through @testable import.
+        let library = try device.makeDefaultLibrary(bundle: FoldShaderLibrary.bundle)
         let pipeline = MTLRenderPipelineDescriptor()
         pipeline.vertexFunction = library.makeFunction(name: "foldVertex")
         pipeline.fragmentFunction = library.makeFunction(name: "foldFragment")

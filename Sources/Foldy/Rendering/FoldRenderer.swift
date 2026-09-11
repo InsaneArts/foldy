@@ -1,3 +1,4 @@
+#if !os(watchOS)
 import MetalKit
 import MetalPerformanceShaders
 
@@ -27,7 +28,7 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
         guard let device,
               let queue = device.makeCommandQueue() else { throw FoldFallbackReason.metalUnavailable }
         self.queue = queue
-        let library = try device.makeDefaultLibrary(bundle: .module)
+        let library = try device.makeDefaultLibrary(bundle: FoldShaderLibrary.bundle)
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = library.makeFunction(name: "foldVertex")
         descriptor.fragmentFunction = library.makeFunction(name: "foldFragment")
@@ -201,3 +202,4 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
         }
     }
 }
+#endif
