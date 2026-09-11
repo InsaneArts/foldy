@@ -1,0 +1,57 @@
+name: FoldyDemo
+options:
+  deploymentTarget:
+    iOS: '17.0'
+packages:
+  Foldy:
+    path: ../..
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 6SR4JWJD54
+targets:
+  FoldyDemo:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+        excludes: ["**/*.profraw", "**/.DS_Store"]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.foldy.demo
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_NSMotionUsageDescription: Tilt your iPhone to control the Foldy preview.
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+    dependencies:
+      - package: Foldy
+  FoldyDemoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests, ../../Tests/FoldyTests]
+    dependencies:
+      - target: FoldyDemo
+      - package: Foldy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.foldy.demo.tests
+        GENERATE_INFOPLIST_FILE: YES
+  FoldyDemoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: FoldyDemo
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.foldy.demo.uitests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  FoldyDemo:
+    build:
+      targets:
+        FoldyDemo: all
+    test:
+      targets: [FoldyDemoTests, FoldyDemoUITests]
