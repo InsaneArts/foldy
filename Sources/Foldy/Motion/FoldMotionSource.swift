@@ -1,12 +1,12 @@
+#if canImport(CoreMotion)
 import CoreMotion
 import Observation
-import UIKit
 import simd
-
-/// A short, sharp nudge of the device toward one screen edge.
-public enum FoldBump: Sendable, Equatable {
-    case left, right, up, down
-}
+#if os(iOS)
+import UIKit
+#elseif os(watchOS)
+import WatchKit
+#endif
 
 /// Optional, calibrated device tilt. Sensors start only after an explicit `start()` call.
 /// Use the owning window's interface orientation, and call `stop()` when the effect is hidden.
@@ -18,6 +18,7 @@ public enum FoldBump: Sendable, Equatable {
 ///
 /// Sampling follows the reference demo: 120 Hz gyro-only attitude, 40 ms of gyroscope prediction
 /// to cover sensor and display latency, and a 0.7 per-sample smoothing factor.
+/// On watchOS the screen is taken as upright with the crown on the right.
 @MainActor @Observable
 public final class FoldMotionSource: NSObject {
     /// The calibrated tilt of the device, updated at the sensor rate while running.
@@ -33,10 +34,12 @@ public final class FoldMotionSource: NSObject {
     /// Velocity change, in metres per second, that counts as a bump. The default responds to a
     /// small push of a few centimetres; raise it if ordinary handling triggers moves.
     public var bumpThreshold = 0.18
+    #if os(iOS)
     /// The owning window scene's orientation. Changing it recalibrates the reference pose.
     public var orientation: UIInterfaceOrientation = .portrait {
         didSet { if orientation != oldValue { recalibrate() } }
     }
+    #endif
 
     /// Fraction of the remaining error closed per sample. The attitude is already fused,
     /// and every extra frame of filtering is visible as lag between the hand and the screen.
@@ -56,16 +59,22 @@ public final class FoldMotionSource: NSObject {
     public override init() {
         super.init()
         target.owner = self
+        #if os(iOS)
         NotificationCenter.default.addObserver(self, selector: #selector(stop),
             name: UIApplication.willResignActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(reduceMotionChanged),
             name: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil)
+        #elseif os(watchOS)
+        NotificationCenter.default.addObserver(self, selector: #selector(stop),
+            name: WKExtension.applicationWillResignActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(reduceMotionChanged),
+            name: .WKAccessibilityReduceMotionStatusDidChange, object: nil)
+        #endif
     }
 
     /// Starts sensors and captures the current pose as neutral. Requires an active app and no Reduce Motion.
     public func start() {
-        guard !isRunning, isAvailable, !UIAccessibility.isReduceMotionEnabled,
-              UIApplication.shared.applicationState == .active else { return }
+        guard !isRunning, isAvailable, !Self.systemReducesMotion, Self.isApplicationActive else { return }
         recalibrate()
         let target = target
         // Gyro-only reference frame: the magnetometer-corrected variants trade latency for
@@ -90,6 +99,31 @@ public final class FoldMotionSource: NSObject {
         tilt = .zero
     }
 
+    private static var systemReducesMotion: Bool {
+        #if os(iOS)
+        UIAccessibility.isReduceMotionEnabled
+        #else
+        WKAccessibilityIsReduceMotionEnabled()
+        #endif
+    }
+
+    private static var isApplicationActive: Bool {
+        #if os(iOS)
+        UIApplication.shared.applicationState == .active
+        #else
+        WKApplication.shared().applicationState == .active
+        #endif
+    }
+
+    /// Screen-space right and up axes of the interface, in device coordinates.
+    private var axes: (x: SIMD3<Double>, y: SIMD3<Double>) {
+        #if os(iOS)
+        Self.screenAxes(for: orientation)
+        #else
+        (SIMD3(1, 0, 0), SIMD3(0, 1, 0))
+        #endif
+    }
+
     fileprivate func process(_ motion: CMDeviceMotion) {
         detectBump(motion)
         let deviceToReference = deviceToReferenceMatrix(motion)
@@ -100,9 +134,9 @@ public final class FoldMotionSource: NSObject {
         // Current device axes expressed in the calibrated device frame.
         let relative = reference.transpose * deviceToReference
         let normal = relative.columns.2
-        let measured = Self.tilt(normal: normal, orientation: orientation)
+        let axes = axes
+        let measured = Self.tilt(normal: normal, axes: axes)
         // Extrapolate along the rotation rate around each screen axis.
-        let axes = Self.screenAxes(for: orientation)
         let rate = SIMD3(motion.rotationRate.x, motion.rotationRate.y, motion.rotationRate.z)
         let predicted = FoldTilt(horizontal: measured.horizontal + simd_dot(rate, axes.y) * predictionInterval,
                                  vertical: measured.vertical + simd_dot(rate, axes.x) * predictionInterval)
@@ -113,7 +147,7 @@ public final class FoldMotionSource: NSObject {
 
     private func detectBump(_ motion: CMDeviceMotion) {
         guard onBump != nil else { return }
-        let axes = Self.screenAxes(for: orientation)
+        let axes = axes
         let acceleration = SIMD3(motion.userAcceleration.x, motion.userAcceleration.y, motion.userAcceleration.z)
         let now = motion.timestamp
         impulse.append((now, simd_dot(acceleration, axes.x), simd_dot(acceleration, axes.y)))
@@ -165,6 +199,7 @@ public final class FoldMotionSource: NSObject {
         return (rowsAreDeviceAxes ?? true) ? asRows.transpose : asRows
     }
 
+    #if os(iOS)
     /// Screen-space right and up axes of the interface, in device coordinates.
     static func screenAxes(for orientation: UIInterfaceOrientation) -> (x: SIMD3<Double>, y: SIMD3<Double>) {
         switch orientation {
@@ -175,10 +210,14 @@ public final class FoldMotionSource: NSObject {
         }
     }
 
+    static func tilt(normal: SIMD3<Double>, orientation: UIInterfaceOrientation) -> FoldTilt {
+        tilt(normal: normal, axes: screenAxes(for: orientation))
+    }
+    #endif
+
     /// The pane hinges on the edge the screen normal leans toward, on both axes.
     /// A normal leaning right means the right edge is farther from the viewer; leaning up, the top edge.
-    static func tilt(normal: SIMD3<Double>, orientation: UIInterfaceOrientation) -> FoldTilt {
-        let axes = screenAxes(for: orientation)
+    static func tilt(normal: SIMD3<Double>, axes: (x: SIMD3<Double>, y: SIMD3<Double>)) -> FoldTilt {
         let across = simd_dot(normal, axes.x)
         let along = simd_dot(normal, axes.y)
         return FoldTilt(horizontal: atan2(across, normal.z),
@@ -186,7 +225,7 @@ public final class FoldMotionSource: NSObject {
     }
 
     @objc private func reduceMotionChanged() {
-        if UIAccessibility.isReduceMotionEnabled { stop() }
+        if Self.systemReducesMotion { stop() }
     }
 
     @MainActor private final class MotionTarget {
@@ -203,3 +242,4 @@ public final class FoldMotionSource: NSObject {
         }
     }
 }
+#endif
