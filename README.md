@@ -29,7 +29,7 @@ Foldy is an independent recreation of that look for any view on iOS, macOS, and 
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/tornikegomareli/Foldy.git", from: "0.2.0")
+    .package(url: "https://github.com/tornikegomareli/Foldy.git", from: "0.3.0")
 ]
 ```
 
