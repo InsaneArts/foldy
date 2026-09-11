@@ -28,7 +28,7 @@ Foldy is an independent recreation of that look for any iOS view. A Metal shader
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/tornikegomareli/Foldy.git", from: "0.1.0")
+    .package(url: "https://github.com/tornikegomareli/Foldy.git", from: "0.2.0")
 ]
 ```
 
