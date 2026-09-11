@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// A Metal transition between two stable view hierarchies.
+/// A transition between two stable view hierarchies, drawn with Metal where it exists and with
+/// SwiftUI's own 3D rotation and blur on watchOS.
 /// Animate `progress` with `withAnimation`, or drive it directly from a gesture.
 /// The container fills its proposed size. Give cards an explicit frame.
 public struct FoldTransition<Source: View, Destination: View>: View, Animatable {
@@ -37,9 +38,15 @@ public struct FoldTransition<Source: View, Destination: View>: View, Animatable 
     }
 
     public var body: some View {
+        #if os(watchOS)
+        FoldSoftwareTransition(source: source, destination: destination, progress: progress, style: style,
+                               reduceMotion: reduceMotion || reducesMotion, isActive: scenePhase == .active,
+                               eventHandler: eventHandler)
+        #else
         FoldHost(source: source, destination: destination, value: progress, style: style,
                  isTransition: true, reduceMotion: reduceMotion || reducesMotion, isActive: scenePhase == .active,
                  eventHandler: eventHandler)
+        #endif
     }
 }
 
@@ -72,12 +79,101 @@ private struct FoldTiltView<Content: View>: View, Animatable {
     }
 
     var body: some View {
+        #if os(watchOS)
+        content.modifier(FoldSoftwarePane(horizontal: horizontal, vertical: vertical, style: style,
+                                          reduceMotion: reduceMotion || reducesMotion || scenePhase != .active))
+        #else
         FoldHost(source: content, destination: EmptyView(), value: horizontal, style: style,
                  isTransition: false, reduceMotion: reduceMotion || reducesMotion, isActive: scenePhase == .active,
                  verticalAngle: vertical)
+        #endif
     }
 }
 
+#if os(watchOS)
+/// A two-view fold drawn with the software pane. Both hierarchies stay mounted, so their state
+/// survives a fold, and the same events are reported as the Metal container reports.
+private struct FoldSoftwareTransition<Source: View, Destination: View>: View {
+    let source: Source
+    let destination: Destination
+    let progress: Double
+    let style: FoldStyle
+    let reduceMotion: Bool
+    let isActive: Bool
+    let eventHandler: (@MainActor (FoldEvent) -> Void)?
+    @State private var state = FoldTransitionState()
+    @State private var suppressed = false
+    @State private var reportedFallback = false
+
+    private struct Pose {
+        var front = 0.0
+        var back = 0.0
+        var sourceOpacity = 1.0
+        var showsDestination = false
+        var resting: FoldEndpoint?
+    }
+
+    var body: some View {
+        let value = finiteClamp(progress, 0...1, fallback: 0)
+        let pose = pose(at: value)
+        ZStack {
+            destination
+                .modifier(FoldSoftwarePane(horizontal: pose.back, vertical: 0, style: style, reduceMotion: reduceMotion))
+                .opacity(pose.showsDestination ? 1 : 0)
+                .allowsHitTesting(pose.resting == .destination)
+            source
+                .modifier(FoldSoftwarePane(horizontal: pose.front, vertical: 0, style: style, reduceMotion: reduceMotion))
+                .opacity(pose.sourceOpacity)
+                .allowsHitTesting(pose.resting == .source)
+        }
+        .onChange(of: value, initial: true) { _, next in update(next) }
+        .onChange(of: isActive) { _, active in if !active { cancel() } }
+    }
+
+    /// At an endpoint, after a cancellation, or under Reduce Motion one view is shown flat and live.
+    private func pose(at value: Double) -> Pose {
+        let endpoint: FoldEndpoint? = value == 0 ? .source : value == 1 ? .destination : nil
+        let reduced: FoldEndpoint? = reduceMotion ? (value < 0.5 ? .source : .destination) : nil
+        if let shown = endpoint ?? (suppressed ? state.restingEndpoint : nil) ?? reduced {
+            return Pose(sourceOpacity: shown == .source ? 1 : 0, showsDestination: shown == .destination, resting: shown)
+        }
+        let sign: Double = style.edge == .right ? 1 : -1
+        let angle = value * .pi / 2
+        switch style.choreography {
+        case .reveal:
+            return Pose(front: sign * angle, sourceOpacity: 1 - smoothstep(0.15, 1, value), showsDestination: true)
+        case .pageTurn:
+            return Pose(front: sign * angle, back: sign * (.pi / 2 - angle),
+                        sourceOpacity: 1 - smoothstep(0.3, 0.7, value), showsDestination: true)
+        }
+    }
+
+    private func update(_ next: Double) {
+        let atEndpoint = next == 0 || next == 1
+        if suppressed && !atEndpoint { return }
+        let event = state.update(next)
+        if atEndpoint {
+            suppressed = false
+            reportedFallback = false
+        } else if reduceMotion && !reportedFallback {
+            reportedFallback = true
+            deliver(.fallback(.reduceMotion))
+        }
+        if let event { deliver(event) }
+    }
+
+    private func cancel() {
+        guard let event = state.cancel() else { return }
+        suppressed = true
+        deliver(event)
+    }
+
+    private func deliver(_ event: FoldEvent) {
+        guard let eventHandler else { return }
+        Task { @MainActor in eventHandler(event) }
+    }
+}
+#else
 private struct FoldHost<Source: View, Destination: View>: UIViewControllerRepresentable {
     let source: Source
     let destination: Destination
@@ -163,3 +259,4 @@ private final class FoldHostController<Source: View, Destination: View>: UIViewC
         }
     }
 }
+#endif

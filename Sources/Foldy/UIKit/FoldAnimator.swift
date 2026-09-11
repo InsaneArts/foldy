@@ -1,3 +1,4 @@
+#if !os(watchOS)
 import UIKit
 
 /// The run loop retains the link; the link's target holds only a weak reference to its owner.
@@ -39,3 +40,4 @@ final class FoldAnimator {
         }
     }
 }
+#endif

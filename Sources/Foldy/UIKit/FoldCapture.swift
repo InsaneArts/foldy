@@ -1,3 +1,4 @@
+#if !os(watchOS)
 import UIKit
 
 /// Supplies a prepared snapshot for content that UIKit cannot capture, such as video.
@@ -33,3 +34,4 @@ enum FoldCapture {
         return cgImage
     }
 }
+#endif

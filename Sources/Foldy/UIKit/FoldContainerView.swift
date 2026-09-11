@@ -1,3 +1,4 @@
+#if !os(watchOS)
 import UIKit
 
 /// Hosts live content at rest and frozen Metal snapshots during a fold.
@@ -270,3 +271,4 @@ public final class FoldContainerView: UIView {
         fallback(.reduceMotion)
     }
 }
+#endif

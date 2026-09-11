@@ -1,3 +1,4 @@
+#if !os(watchOS)
 import Foundation
 
 struct FoldUniforms {
@@ -23,3 +24,4 @@ struct FoldUniforms {
                           style.appearance.materialIndex, Float((geometry.z + Float(abs(pitch))) * 9))
     }
 }
+#endif
