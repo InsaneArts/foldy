@@ -1,5 +1,5 @@
 #if !os(watchOS)
-import UIKit
+import QuartzCore
 
 /// The run loop retains the link; the link's target holds only a weak reference to its owner.
 @MainActor
@@ -17,7 +17,11 @@ final class FoldAnimator {
     func start() {
         let target = Target()
         target.owner = self
-        let link = CADisplayLink(target: target, selector: #selector(Target.tick(_:)))
+        guard let link = FoldDisplayLink.make(target: target, selector: #selector(Target.tick(_:)), view: nil) else {
+            // No screen to pace against: finish now.
+            update(1)
+            return
+        }
         link.add(to: .main, forMode: .common)
         self.link = link
     }

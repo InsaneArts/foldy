@@ -2,9 +2,16 @@
 import MetalKit
 import MetalPerformanceShaders
 
+/// The Metal view never takes input; touches and clicks go to the fold container.
+final class FoldMetalView: MTKView {
+    #if canImport(AppKit)
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    #endif
+}
+
 @MainActor
 final class FoldRenderer: NSObject, MTKViewDelegate {
-    let view: MTKView
+    let view: FoldMetalView
     private let queue: any MTLCommandQueue
     private let pipeline: any MTLRenderPipelineState
     private var source: (any MTLTexture)?
@@ -28,23 +35,28 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
         guard let device,
               let queue = device.makeCommandQueue() else { throw FoldFallbackReason.metalUnavailable }
         self.queue = queue
-        let library = try device.makeDefaultLibrary(bundle: FoldShaderLibrary.bundle)
+        let library = try FoldShaderLibrary.makeLibrary(device: device)
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = library.makeFunction(name: "foldVertex")
         descriptor.fragmentFunction = library.makeFunction(name: "foldFragment")
         descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
         pipeline = try device.makeRenderPipelineState(descriptor: descriptor)
-        view = MTKView(frame: .zero, device: device)
+        view = FoldMetalView(frame: .zero, device: device)
         super.init()
         view.delegate = self
         view.colorPixelFormat = .bgra8Unorm
-        view.isOpaque = false
-        view.backgroundColor = .clear
         view.clearColor = MTLClearColorMake(0, 0, 0, 0)
         view.isPaused = true
         view.enableSetNeedsDisplay = false
+        #if canImport(UIKit)
+        view.isOpaque = false
+        view.backgroundColor = .clear
         view.isUserInteractionEnabled = false
         view.accessibilityElementsHidden = true
+        #else
+        view.layer?.isOpaque = false
+        view.layer?.backgroundColor = nil
+        #endif
         // The drawable is sized explicitly from the capture scale. A host that changes the layer's
         // contents scale, as SwiftUI does under `scaleEffect`, must not multiply it past GPU limits.
         view.autoResizeDrawable = false
@@ -128,7 +140,7 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
         guard link == nil else { return }
         let target = LinkTarget()
         target.owner = self
-        let link = CADisplayLink(target: target, selector: #selector(LinkTarget.tick(_:)))
+        guard let link = FoldDisplayLink.make(target: target, selector: #selector(LinkTarget.tick(_:)), view: view) else { return }
         link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
         link.add(to: .main, forMode: .common)
         self.link = link
@@ -143,6 +155,15 @@ final class FoldRenderer: NSObject, MTKViewDelegate {
         guard isDirty, inFlight < Self.maxInFlight, let latest, source != nil else { return }
         isDirty = false
         _ = submit(latest)
+    }
+
+    /// Matches the layer's scale to the capture so the drawable and the view agree on pixels per point.
+    func setScale(_ scale: CGFloat) {
+        #if canImport(UIKit)
+        view.contentScaleFactor = scale
+        #else
+        view.layer?.contentsScale = scale
+        #endif
     }
 
     /// Sizes the drawable for a view of `bounds` at `scale` pixels per point.

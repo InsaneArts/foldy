@@ -1,14 +1,19 @@
 #if !os(watchOS)
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 /// Hosts live content at rest and frozen Metal snapshots during a fold.
 /// Add gesture recognizers to this container, not to the temporarily hidden content views.
+/// A `UIView` on iOS and an `NSView` on macOS, where its origin is top-left like UIKit's.
 @MainActor
-public final class FoldContainerView: UIView {
+public final class FoldContainerView: FoldPlatformView {
     /// Shown at progress zero. Foldy owns its frame and visibility.
-    public let sourceView: UIView
+    public let sourceView: FoldPlatformView
     /// Shown at progress one; nil for a single-view tilt.
-    public let destinationView: UIView?
+    public let destinationView: FoldPlatformView?
     /// Changing the style during a fold redraws the current frame without recapturing.
     public var style: FoldStyle = .frosted {
         didSet { if style != oldValue { renderIfNeeded() } }
@@ -49,7 +54,7 @@ public final class FoldContainerView: UIView {
     var submittedFrames: Int { renderer?.submittedFrames ?? 0 }
 
     /// Creates a two-view transition. Drive it with `setProgress(_:)` or `animate(to:)`.
-    public init(source: UIView, destination: UIView) {
+    public init(source: FoldPlatformView, destination: FoldPlatformView) {
         precondition(source !== destination, "Source and destination must be distinct views.")
         sourceView = source
         destinationView = destination
@@ -58,7 +63,7 @@ public final class FoldContainerView: UIView {
     }
 
     /// Creates a single-view effect. Drive it with `setAngle(_:)` in radians.
-    public init(content: UIView) {
+    public init(content: FoldPlatformView) {
         sourceView = content
         destinationView = nil
         super.init(frame: .zero)
@@ -69,20 +74,59 @@ public final class FoldContainerView: UIView {
     required init?(coder: NSCoder) { fatalError("Use init(source:destination:) or init(content:).") }
 
     private func configure() {
+        #if canImport(AppKit)
+        wantsLayer = true
+        #endif
         clipsToBounds = true
         if let destinationView {
             addSubview(destinationView)
             destinationView.isHidden = true
         }
         addSubview(sourceView)
+        #if canImport(UIKit)
         NotificationCenter.default.addObserver(self, selector: #selector(backgrounded),
             name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(reduceMotionChanged),
             name: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil)
+        #else
+        NotificationCenter.default.addObserver(self, selector: #selector(backgrounded),
+            name: NSApplication.didHideNotification, object: nil)
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(reduceMotionChanged),
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil)
+        #endif
     }
 
+    #if canImport(UIKit)
     public override func layoutSubviews() {
         super.layoutSubviews()
+        layoutContent()
+    }
+
+    public override func didMoveToWindow() {
+        super.didMoveToWindow()
+        windowChanged()
+    }
+    #else
+    /// Top-left origin, like UIKit, so frames and gesture translations read the same on both platforms.
+    public override var isFlipped: Bool { true }
+
+    public override func layout() {
+        super.layout()
+        layoutContent()
+    }
+
+    public override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        needsLayout = true
+    }
+
+    public override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        windowChanged()
+    }
+    #endif
+
+    private func layoutContent() {
         sourceView.frame = bounds
         destinationView?.frame = bounds
         renderer?.view.frame = bounds
@@ -93,9 +137,13 @@ public final class FoldContainerView: UIView {
         }
     }
 
-    public override func didMoveToWindow() {
-        super.didMoveToWindow()
-        if window == nil { cancel() } else { setNeedsLayout() }
+    private func windowChanged() {
+        guard window != nil else { cancel(); return }
+        #if canImport(UIKit)
+        setNeedsLayout()
+        #else
+        needsLayout = true
+        #endif
     }
 
     /// Updates an interactive transition. Zero is the source; one is the destination.
@@ -181,7 +229,30 @@ public final class FoldContainerView: UIView {
         releaseSnapshots()
     }
 
-    private var motionIsReduced: Bool { reducesMotion || UIAccessibility.isReduceMotionEnabled }
+    private var motionIsReduced: Bool {
+        #if canImport(UIKit)
+        reducesMotion || UIAccessibility.isReduceMotionEnabled
+        #else
+        reducesMotion || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        #endif
+    }
+
+    /// Pixels per point of the screen showing this view.
+    private var nativeScale: CGFloat {
+        #if canImport(UIKit)
+        window?.screen.scale ?? traitCollection.displayScale
+        #else
+        window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        #endif
+    }
+
+    private func bringToFront(_ view: FoldPlatformView) {
+        #if canImport(UIKit)
+        bringSubviewToFront(view)
+        #else
+        addSubview(view, positioned: .above, relativeTo: nil)
+        #endif
+    }
 
     private func renderIfNeeded() {
         guard !isRendering, suppression == nil || canRetryCapture, window != nil,
@@ -204,25 +275,28 @@ public final class FoldContainerView: UIView {
                 // Both views are unhidden for capture. Keep the visible endpoint on top so the other
                 // one cannot flash for a frame before the pane covers them.
                 if let destinationView, state.restingEndpoint == .destination {
-                    bringSubviewToFront(destinationView)
+                    bringToFront(destinationView)
                 } else {
-                    bringSubviewToFront(sourceView)
+                    bringToFront(sourceView)
                 }
                 sourceView.isHidden = false
                 destinationView?.isHidden = false
                 // Bound temporary memory on large displays; preserve native scale on ordinary phones.
-                let scale = min(window?.screen.scale ?? traitCollection.displayScale,
-                                2048 / max(bounds.width, bounds.height))
+                let scale = min(nativeScale, 2048 / max(bounds.width, bounds.height))
                 let source = try FoldCapture.image(of: sourceView, scale: scale, provider: sourceSnapshot)
                 let destination = try destinationView.map {
                     try FoldCapture.image(of: $0, scale: scale, provider: destinationSnapshot)
                 }
                 try renderer.prepare(source: source, destination: destination)
                 renderer.view.frame = bounds
-                renderer.view.contentScaleFactor = scale
+                renderer.setScale(scale)
                 renderer.setDrawableSize(bounds: bounds.size, scale: scale)
                 addSubview(renderer.view)
+                #if canImport(UIKit)
                 renderer.view.layoutIfNeeded()
+                #else
+                renderer.view.layoutSubtreeIfNeeded()
+                #endif
                 capturedSize = bounds.size
                 hasSnapshots = true
                 captureCount += 1
