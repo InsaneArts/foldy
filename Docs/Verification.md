@@ -95,3 +95,9 @@ Simulator checks do not establish exact fidelity to Apple's original animation.
 
 The README contains the command to run the suite from the included Xcode project.
 Screenshots are attached to the UI test results; export them with `xcrun xcresulttool export attachments`.
+
+## September 12, 2026: watchOS
+
+- 34 unit and 10 UI tests passed on the iPhone 17 Pro simulator, including the new swipe-tracker, software-pose, and pane-direction tests.
+- The package cross-compiled for the watchOS simulator with `swift build --triple arm64-apple-watchos10.0-simulator --sdk "$(xcrun --sdk watchsimulator --show-sdk-path)"`.
+- No watchOS simulator run: the watchOS 26.5 platform is not installed on this machine.

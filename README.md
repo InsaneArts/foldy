@@ -7,6 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Swift-6-orange.svg" />
   <img src="https://img.shields.io/badge/iOS-17.0+-blue.svg" />
+  <img src="https://img.shields.io/badge/watchOS-10.0+-blue.svg" />
   <img src="https://img.shields.io/badge/SwiftUI%20%2B%20UIKit-Native-green.svg" />
   <img src="https://img.shields.io/badge/Metal-Shader-lightgrey.svg" />
 </p>
@@ -141,9 +142,10 @@ Everything about capture, lifecycle, motion sampling, and the style parameters i
 
 ## Requirements
 
-- iOS 17+
+- iOS 17+ and watchOS 10+
 - Swift 6, Xcode 16 or later
 - The simulator runs every fold; physical tilt and nudges need a device
+- Apple Watch has no Metal, so watchOS draws folds with SwiftUI's 3D rotation and blur. `FoldTransition`, `foldEffect`, `foldSwipe`, `FoldPager`, and `FoldMotionSource` work there; `FoldContainerView` is UIKit and iOS only
 
 ## License
 

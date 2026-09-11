@@ -242,6 +242,13 @@ Set `onBump` to also receive nudges: user acceleration is integrated over a shor
 Add an appropriate `NSMotionUsageDescription` to an app that uses motion.
 The simulator cannot verify physical tilt direction or sensor latency.
 
+## watchOS
+
+Apple Watch has no Metal. On watchOS `FoldTransition` and `foldEffect` draw the pane with SwiftUI: a 3D rotation around the hinge whose free edge recedes, the way the shader's projection compresses content there, with the style's blur and darkening applied to the whole pane and its eye distance as the perspective.
+Content stays live and is never captured, so snapshot providers and `FoldContainerView` do not exist there.
+`foldSwipe` and `FoldPager` use a drag gesture, and `FoldMotionSource` reads the watch's sensors with the screen taken as upright with the crown on the right.
+`FoldStyle.viewpoint` and `ripple` have no effect. Events are reported the same way, including `.fallback(.reduceMotion)`.
+
 ## Demo and tests
 
 Open `Examples/FoldyDemo/FoldyDemo.xcodeproj`. It references this local package and uses automatic signing with the locally selected development team.
