@@ -1,6 +1,6 @@
 # Foldy reference
 
-Frosted-glass fold effects for iOS, rendered with Metal. SwiftUI and UIKit, iOS 17+, Swift 6, no dependencies.
+Frosted-glass fold effects for Apple platforms, rendered with Metal. SwiftUI, UIKit, and AppKit; iOS 17+, macOS 14+, watchOS 10+; Swift 6, no dependencies.
 
 Inspired by iPhone Duo and adapted from [DuoLikeAnimation](https://github.com/elijah-semyonov/DuoLikeAnimation).
 An independent visual recreation, not Apple's implementation or a physical display-handoff API.
@@ -242,6 +242,15 @@ Set `onBump` to also receive nudges: user acceleration is integrated over a shor
 Add an appropriate `NSMotionUsageDescription` to an app that uses motion.
 The simulator cannot verify physical tilt direction or sensor latency.
 
+## macOS
+
+`FoldContainerView` is an `NSView` on macOS with the same API, flipped so its origin is top-left like UIKit's.
+Capture uses `cacheDisplay`, resampled to the renderer's scale, and a `FoldSnapshotProvider` returns an `NSImage`.
+`foldSwipe` and `FoldPager` attach an `NSPanGestureRecognizer`, so a click-and-drag drives the fold.
+Hiding the app cancels an active fold, and Reduce Motion is read from `NSWorkspace`.
+`FoldMotionSource` exists so shared code compiles, but `isAvailable` is false and `start()` does nothing.
+A plain `swift build` copies the shader source instead of compiling it, so the first fold in such a build compiles the library once at run time; Xcode builds ship the precompiled `default.metallib`.
+
 ## watchOS
 
 Apple Watch has no Metal. On watchOS `FoldTransition` and `foldEffect` draw the pane with SwiftUI: a 3D rotation around the hinge whose free edge recedes, the way the shader's projection compresses content there, with the style's blur and darkening applied to the whole pane and its eye distance as the perspective.
@@ -289,7 +298,7 @@ xcodebuild -project Examples/FoldyDemo/FoldyDemo.xcodeproj \
   -parallel-testing-enabled NO test
 ```
 
-Use Xcode's iOS test destination; `swift test` on macOS cannot build this UIKit package.
+`swift test` on macOS runs the state, swipe, pose, and AppKit container tests; the GPU and UI tests need the demo project's iOS destination.
 The demo test host also runs the package's state tests. GPU tests load the actual bundled shader and read rendered pixels.
 
 ## License

@@ -7,8 +7,9 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Swift-6-orange.svg" />
   <img src="https://img.shields.io/badge/iOS-17.0+-blue.svg" />
+  <img src="https://img.shields.io/badge/macOS-14.0+-blue.svg" />
   <img src="https://img.shields.io/badge/watchOS-10.0+-blue.svg" />
-  <img src="https://img.shields.io/badge/SwiftUI%20%2B%20UIKit-Native-green.svg" />
+  <img src="https://img.shields.io/badge/SwiftUI%20%2B%20UIKit%20%2B%20AppKit-Native-green.svg" />
   <img src="https://img.shields.io/badge/Metal-Shader-lightgrey.svg" />
 </p>
 
@@ -20,7 +21,7 @@ https://github.com/user-attachments/assets/7a972fe0-2a78-4dad-b1cd-93d7598c6062
 
 On September 9, 2026 Apple unveiled [iPhone Duo](https://www.apple.com/iphone-duo/), its first foldable iPhone. When the phone opens or closes, iOS does not cut between the cover and inner displays. The interface frosts, blurs, and stretches through the moving half of the screen, driven by the hinge angle, so the change feels continuous. Apple describes a display engine that drives both screens during the transition in its [announcement](https://www.apple.com/newsroom/2026/09/apple-unveils-iphone-duo/).
 
-Foldy is an independent recreation of that look for any iOS view. A Metal shader keeps the interface on a fixed plane and refracts it through a tilting pane of frosted glass. It is not Apple's implementation and needs no folding hardware.
+Foldy is an independent recreation of that look for any view on iOS, macOS, and watchOS. A Metal shader keeps the interface on a fixed plane and refracts it through a tilting pane of frosted glass. It is not Apple's implementation and needs no folding hardware.
 
 ## Installation
 
@@ -76,7 +77,7 @@ Card().foldEffect(angle: .degrees(30))
 | `FoldCutoutPull`, `FoldCutoutGhost`, `FoldCutoutSnap` | Pull rows into the Dynamic Island as they scroll |
 | `FoldMotionSource` | Device tilt and nudge detection |
 | `FoldStyle` and `FoldAppearance` | Hinge, optics, choreography, and six glass materials |
-| `FoldContainerView` | The UIKit core |
+| `FoldContainerView` | The UIKit and AppKit core |
 
 ## Glass materials
 
@@ -116,7 +117,7 @@ card.modifier(FoldCutoutPull(progress: pull, start: cardFrame, target: cutout.fr
 
 Pass `liquid: true` and the view is swallowed like liquid: the glass ripples, the edge dissolves into black goo, and the island bulges to meet it. The demo's story feed and photo grid show the full scrolling pattern.
 
-## UIKit
+## UIKit and AppKit
 
 ```swift
 let fold = FoldContainerView(source: firstView, destination: secondView)
@@ -128,7 +129,7 @@ fold.animate(to: .destination)
 fold.setProgress(0.4)
 ```
 
-Use `FoldContainerView(content:)` with `setAngle(_:)` or `setTilt(_:)` for a single view.
+Use `FoldContainerView(content:)` with `setAngle(_:)` or `setTilt(_:)` for a single view. On macOS the container is an `NSView` with the same API, and a click-and-drag through `foldSwipe` or your own `NSPanGestureRecognizer` drives it.
 
 ## Reduce Motion
 
@@ -142,10 +143,11 @@ Everything about capture, lifecycle, motion sampling, and the style parameters i
 
 ## Requirements
 
-- iOS 17+ and watchOS 10+
+- iOS 17+, macOS 14+, and watchOS 10+
 - Swift 6, Xcode 16 or later
-- The simulator runs every fold; physical tilt and nudges need a device
-- Apple Watch has no Metal, so watchOS draws folds with SwiftUI's 3D rotation and blur. `FoldTransition`, `foldEffect`, `foldSwipe`, `FoldPager`, and `FoldMotionSource` work there; `FoldContainerView` is UIKit and iOS only
+- The simulator runs every fold; physical tilt and nudges need an iPhone or Apple Watch
+- Apple Watch has no Metal, so watchOS draws folds with SwiftUI's 3D rotation and blur. `FoldTransition`, `foldEffect`, `foldSwipe`, `FoldPager`, and `FoldMotionSource` work there; `FoldContainerView` is iOS and macOS only
+- `FoldMotionSource` reads sensors on iOS and watchOS; on macOS `isAvailable` is false
 
 ## License
 

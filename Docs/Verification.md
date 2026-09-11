@@ -101,3 +101,8 @@ Screenshots are attached to the UI test results; export them with `xcrun xcresul
 - 34 unit and 10 UI tests passed on the iPhone 17 Pro simulator, including the new swipe-tracker, software-pose, and pane-direction tests.
 - The package cross-compiled for the watchOS simulator with `swift build --triple arm64-apple-watchos10.0-simulator --sdk "$(xcrun --sdk watchsimulator --show-sdk-path)"`.
 - No watchOS simulator run: the watchOS 26.5 platform is not installed on this machine.
+
+## September 12, 2026: macOS
+
+- 17 tests passed with `swift test` on macOS 26.6.2: state, swipe-tracker, software-pose, and the AppKit container suite, which captures an `NSView` hierarchy, renders Metal frames, cancels on resize, and reuses a single-view snapshot.
+- The iOS suite and the watchOS cross-compile were rerun after the change.
