@@ -1,4 +1,4 @@
-#if canImport(CoreMotion)
+#if os(iOS) || os(watchOS)
 import CoreMotion
 import Observation
 import simd
@@ -241,5 +241,24 @@ public final class FoldMotionSource: NSObject {
             owner.process(motion)
         }
     }
+}
+#else
+import Foundation
+import Observation
+
+/// Device motion needs Core Motion, which macOS does not have. This stand-in keeps the API uniform:
+/// `isAvailable` is false, `start()` does nothing, and `tilt` stays at zero.
+@MainActor @Observable
+public final class FoldMotionSource: NSObject {
+    public private(set) var tilt: FoldTilt = .zero
+    public var angle: Double { tilt.horizontal }
+    public private(set) var isRunning = false
+    public var isAvailable: Bool { false }
+    public var onBump: (@MainActor (FoldBump) -> Void)?
+    public var bumpThreshold = 0.18
+
+    public func start() {}
+    public func stop() {}
+    public func recalibrate() {}
 }
 #endif
