@@ -141,6 +141,16 @@ Open `Examples/FoldyDemo/FoldyDemo.xcodeproj`. It ships ten screens recreated fr
 
 Everything about capture, lifecycle, motion sampling, and the style parameters is in the [full reference](Docs/Reference.md).
 
+## Agent skill
+
+The repo ships a skill that teaches Claude Code, Codex, and other agents the Foldy API, its rules, and recipes. Install it into the agent directories you use:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tornikegomareli/foldy/main/skills/install.sh | sh
+```
+
+Or copy `skills/foldy/` into `~/.claude/skills/`, `~/.codex/skills/`, or `.claude/skills/` in your project. Then ask the agent for a fold and it reaches for Foldy.
+
 ## Requirements
 
 - iOS 17+, macOS 14+, and watchOS 10+
