@@ -32,7 +32,7 @@ struct ShowcaseView: View {
                     HStack {
                         Text("Fold anything.").font(.system(size: 15, weight: .regular, design: .serif))
                         Spacer()
-                        Text("github.com/tornikegomareli/Foldy").font(.system(size: 10, design: .monospaced))
+                        Text("github.com/insanearts/foldy").font(.system(size: 10, design: .monospaced))
                     }
                     .foregroundStyle(GalleryPalette.muted)
                 }
