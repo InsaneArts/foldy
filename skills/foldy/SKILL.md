@@ -20,7 +20,7 @@ Full reference: `Docs/Reference.md` in the package. Read it before touching capt
 ## Install
 
 ```swift
-.package(url: "https://github.com/tornikegomareli/foldy.git", from: "0.3.0")
+.package(url: "https://github.com/insanearts/foldy.git", from: "0.3.0")
 ```
 
 Add `Foldy` to the target. The shader ships in the package; copy nothing.

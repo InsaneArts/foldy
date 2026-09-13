@@ -29,7 +29,7 @@ Foldy is an independent recreation of that look for any view on iOS, macOS, and 
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/tornikegomareli/Foldy.git", from: "0.3.0")
+    .package(url: "https://github.com/insanearts/foldy.git", from: "0.3.0")
 ]
 ```
 
@@ -146,7 +146,7 @@ Everything about capture, lifecycle, motion sampling, and the style parameters i
 The repo ships a skill that teaches Claude Code, Codex, and other agents the Foldy API, its rules, and recipes. Install it into the agent directories you use:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/tornikegomareli/foldy/main/skills/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/insanearts/foldy/main/skills/install.sh | sh
 ```
 
 Or copy `skills/foldy/` into `~/.claude/skills/`, `~/.codex/skills/`, or `.claude/skills/` in your project. Then ask the agent for a fold and it reaches for Foldy.
